@@ -24,7 +24,7 @@ SPRING_NAT_LEN = 100
 MAX_LENGTH_VEL = 1500
 MAX_ANGLE_VEL = 1000
 DT = 0.0001
-PENDULUM_COUNT = 1
+PENDULUM_COUNT = 3
 #Surface for drawing pendulum path
 dot_surface = pygame.Surface((WIDTH, HEIGHT))
 dot_surface.fill("black")
@@ -159,12 +159,8 @@ class Playground:
             y_new[3] = max(-MAX_ANGLE_VEL, min(MAX_ANGLE_VEL, y_new[3])) 
             new_configs.append(y_new)
         for i in range(self.count):
-            self.pendulums[i].config[0], self.pendulums[i].config[1], self.pendulums[i].velocity[0], self.pendulums[i].velocity[1] = new_configs[i]
-            if i > 0:
-                coords = (self.pendulums[i-1].get_length()*math.sin(self.pendulums[i-1].config[1]), self.pendulums[i-1].get_length()*math.cos(self.pendulums[i-1].config[1]))
-                self.pendulums[i].pivot[0] = coords[0] + self.pendulums[i-1].pivot[0]
-                self.pendulums[i].pivot[1] = coords[1] + self.pendulums[i-1].pivot[1]
             self.total_energy += self.pendulums[i].get_energy()
+            self.pendulums[i].config[0], self.pendulums[i].config[1], self.pendulums[i].velocity[0], self.pendulums[i].velocity[1] = new_configs[i]
 
         #Debug info
         text_surface1 = font.render(f"Energy: {self.total_energy[0]:.2f}", True, "white")
