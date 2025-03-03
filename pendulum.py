@@ -23,12 +23,19 @@ SPRING_NAT_LEN = 100
 MAX_LENGTH_VEL = 1500
 MAX_ANGLE_VEL = 1000
 DT = 0
-PENDULUM_COUNT = 3
+PENDULUM_COUNT = 6
+
 #Surface for drawing pendulum path
 dot_surface = pygame.Surface((WIDTH, HEIGHT))
 dot_surface.fill("black")
 show_dots = False
 prev_dot = (0, 0)
+
+#Colors
+RED = pygame.Color(255, 0, 0)
+BLUE = pygame.Color(0, 150, 255)
+GRAD_SCALE = .1
+
 
 class Pendulum:
     def __init__(self):
@@ -43,9 +50,12 @@ class Pendulum:
             print(self.config[1])
         pivot_vector = pygame.Vector2(self.pivot[0], self.pivot[1])
         coord_vector = pygame.Vector2(self.pivot[0] + coords[0], self.pivot[1] + coords[1])
-        pygame.draw.line(screen, "green", pivot_vector, coord_vector)
+        pygame.draw.line(screen, self.get_spring_color(), pivot_vector, coord_vector)
         pygame.draw.circle(screen, "red", coord_vector, 20)
 
+    def get_spring_color(self):
+        weight = 1 / (1 + np.exp(-GRAD_SCALE * (self.get_length() - SPRING_NAT_LEN)))
+        return RED.lerp(BLUE, weight)
     def get_length(self):
         return max(self.config[0], 1e-9)
 
@@ -196,7 +206,7 @@ while running:
         screen.blit(dot_surface, (0,0))
     playground.draw(screen)
     playground.update()
-    DT = clock.tick(2000) / 1000
+    DT = clock.tick(120) / 3000
     # flip() the display to put your work on screen
     pygame.display.flip()
 
