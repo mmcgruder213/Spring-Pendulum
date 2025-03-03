@@ -3,27 +3,26 @@ import pygame
 import math
 import numpy as np
 import random
-import time
 
 # pygame setup
 pygame.init()
 info = pygame.display.Info()
 WIDTH = info.current_w
 HEIGHT = info.current_h
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN |  pygame.DOUBLEBUF)
 pygame.display.set_caption("Spring Pendulum Simulation")
 clock = pygame.time.Clock()
 running = True
 font = pygame.font.Font(None, 36)
 
 #Physics parameters
-GRAVITY = 5000
-SPRING = 80
+GRAVITY = 8000
+SPRING = 250
 AIR_RES = 0
 SPRING_NAT_LEN = 100
 MAX_LENGTH_VEL = 1500
 MAX_ANGLE_VEL = 1000
-DT = 0.0001
+DT = 0
 PENDULUM_COUNT = 3
 #Surface for drawing pendulum path
 dot_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -35,7 +34,7 @@ class Pendulum:
     def __init__(self):
         self.pivot = [WIDTH/2, 30]
         self.config = [2*SPRING_NAT_LEN, -np.pi/2 + np.pi*random.random()] #Length, angle
-        self.velocity = [0.0, 0] #Length, angle
+        self.velocity = [0.0, 15 - 30*random.random()] #Length, angle
     
     def draw(self, screen):
         try:
@@ -52,14 +51,6 @@ class Pendulum:
 
     def get_speed(self):
         return max(math.sqrt(self.velocity[0]**2 + (self.get_length()*self.velocity[1])**2), 0.01)
-
-    def get_energy(self):
-        try:
-            y_coord = self.get_length()*math.cos(self.config[1])
-        except Exception as e:
-            print(self.config[1])
-        total = 0.5*(self.get_speed())**2 + 0.5 * SPRING * (self.get_length() - SPRING_NAT_LEN)**2 - GRAVITY * (self.pivot[1] + y_coord)
-        return np.array([total, 0.5*(self.get_speed())**2, 0.5 * SPRING * (self.get_length() - SPRING_NAT_LEN)**2, - GRAVITY * (self.pivot[1] + y_coord)])
 
     def get_vector(self):
         return np.array([-SPRING*(self.get_length() - SPRING_NAT_LEN), -GRAVITY, -AIR_RES * self.velocity[0]**2, -AIR_RES * (self.get_length() * self.velocity[1])**2]).T
@@ -125,7 +116,10 @@ class Playground:
         accel1[1] = accel1[1] / self.pendulums[i].get_length()
         return accel1
         
-            
+    def rotation(self, i):
+        L = self.pendulums[i].get_length()
+        return np.array([[math.sin(self.pendulums[i].config[1]), math.cos(self.pendulums[i].config[1])], [L * math.cos(self.pendulums[i].config[1]), -L * math.sin(self.pendulums[i].config[1])]])   
+
     def update(self):
         self.total_energy = np.array([0.0,0.0,0.0,0.0])
         new_configs = []
@@ -158,8 +152,15 @@ class Playground:
             y_new[2] = max(-MAX_LENGTH_VEL, min(MAX_LENGTH_VEL, y_new[2]))
             y_new[3] = max(-MAX_ANGLE_VEL, min(MAX_ANGLE_VEL, y_new[3])) 
             new_configs.append(y_new)
+        x = np.array([0.0,0.0])
         for i in range(self.count):
-            self.total_energy += self.pendulums[i].get_energy()
+            #Calculate energy
+            x += x + np.array([self.pendulums[i].velocity[0], self.pendulums[i].velocity[1]]) @ self.rotation(i)
+            kinetic = 0.5 * (x[0]**2 + x[1]**2)
+            spring = 0.5 * SPRING * (self.pendulums[i].get_length() - SPRING_NAT_LEN)**2
+            gravity = -GRAVITY * (self.pendulums[i].pivot[1] + self.pendulums[i].get_length()*math.cos(self.pendulums[i].config[1]))
+            total = kinetic + spring + gravity
+            self.total_energy += np.array([total, kinetic, spring, gravity])
             self.pendulums[i].config[0], self.pendulums[i].config[1], self.pendulums[i].velocity[0], self.pendulums[i].velocity[1] = new_configs[i]
 
         #Debug info
