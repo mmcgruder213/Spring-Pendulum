@@ -3,6 +3,7 @@ import pygame
 import math
 import numpy as np
 import random
+import colorsys
 
 # pygame setup
 pygame.init()
@@ -17,13 +18,15 @@ font = pygame.font.Font(None, 36)
 
 #Physics parameters
 GRAVITY = 8000
-SPRING = 250
+SPRING = 200
 AIR_RES = 0
-SPRING_NAT_LEN = 100
-MAX_LENGTH_VEL = 1500
-MAX_ANGLE_VEL = 1000
+SPRING_NAT_LEN = 150
+MAX_LENGTH_VEL = 75000
+MAX_ANGLE_VEL = 75000
 DT = 0
-PENDULUM_COUNT = 6
+TIME_SCALE = 0.05
+PENDULUM_COUNT = 3
+TOP_PIVOT_DEPTH = 30
 
 #Surface for drawing pendulum path
 dot_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -31,31 +34,55 @@ dot_surface.fill("black")
 show_dots = False
 prev_dot = (0, 0)
 
-#Colors
+#Color paraemters
 RED = pygame.Color(255, 0, 0)
-BLUE = pygame.Color(0, 150, 255)
-GRAD_SCALE = .1
+BLUE = pygame.Color(120, 120, 120)
+GREEN = pygame.Color(0,255,0)
+BACKGROUND_COLOR = pygame.Color(10, 5, 20)
+COLOR_SHIFT = 199
+GRAD_SCALE = .08
 
+def random_vibrant_color():
+    h = random.random()  # Random hue (0 to 1)
+    s = random.uniform(0.7, 1.0)  # High saturation (avoid dullness)
+    v = random.uniform(0.7, 1.0)  # High brightness (avoid darkness)
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)  # Convert HSV to RGB
+    return (int(r * 255), int(g * 255), int(b * 255))
 
+def get_random_color():
+        R, G, B = random_vibrant_color()
+        return pygame.Color(R, G, B)
+
+color = get_random_color()
+old_color = color
 class Pendulum:
     def __init__(self):
-        self.pivot = [WIDTH/2, 30]
-        self.config = [2*SPRING_NAT_LEN, -np.pi/2 + np.pi*random.random()] #Length, angle
-        self.velocity = [0.0, 15 - 30*random.random()] #Length, angle
+        self.pivot = [WIDTH/2, TOP_PIVOT_DEPTH]
+        self.config = [.5*SPRING_NAT_LEN + 1.5*SPRING_NAT_LEN*random.random(), -np.pi/2 + np.pi*random.random()] #Length, angle
+        self.velocity = [0.0, 0.0] #Length, angle (all pendulums start at rest)
+        self.color_counter = 0
     
     def draw(self, screen):
+        global color, old_color
         try:
             coords = (self.get_length()*math.sin(self.config[1]), self.get_length()*math.cos(self.config[1]))
         except Exception as e:
             print(self.config[1])
+        self.color_counter += 1
         pivot_vector = pygame.Vector2(self.pivot[0], self.pivot[1])
         coord_vector = pygame.Vector2(self.pivot[0] + coords[0], self.pivot[1] + coords[1])
         pygame.draw.line(screen, self.get_spring_color(), pivot_vector, coord_vector)
-        pygame.draw.circle(screen, "red", coord_vector, 20)
-
+        if self.color_counter == 1000:
+            color = get_random_color()
+            self.color_counter = 0
+        elif self.color_counter == COLOR_SHIFT:
+            old_color = color
+        pygame.draw.circle(screen, (old_color).lerp(color, min(COLOR_SHIFT, self.color_counter)/COLOR_SHIFT), coord_vector, 20)
+        
     def get_spring_color(self):
         weight = 1 / (1 + np.exp(-GRAD_SCALE * (self.get_length() - SPRING_NAT_LEN)))
         return RED.lerp(BLUE, weight)
+    
     def get_length(self):
         return max(self.config[0], 1e-9)
 
@@ -168,11 +195,11 @@ class Playground:
             x += x + np.array([self.pendulums[i].velocity[0], self.pendulums[i].velocity[1]]) @ self.rotation(i)
             kinetic = 0.5 * (x[0]**2 + x[1]**2)
             spring = 0.5 * SPRING * (self.pendulums[i].get_length() - SPRING_NAT_LEN)**2
-            gravity = -GRAVITY * (self.pendulums[i].pivot[1] + self.pendulums[i].get_length()*math.cos(self.pendulums[i].config[1]))
+            gravity = GRAVITY * (TOP_PIVOT_DEPTH-(self.pendulums[i].pivot[1] + self.pendulums[i].get_length()*math.cos(self.pendulums[i].config[1])))
             total = kinetic + spring + gravity
             self.total_energy += np.array([total, kinetic, spring, gravity])
             self.pendulums[i].config[0], self.pendulums[i].config[1], self.pendulums[i].velocity[0], self.pendulums[i].velocity[1] = new_configs[i]
-
+    def draw_energy(self):
         #Debug info
         text_surface1 = font.render(f"Energy: {self.total_energy[0]:.2f}", True, "white")
         text_rect1 = text_surface1.get_rect(topleft=(0, 0))
@@ -187,7 +214,6 @@ class Playground:
         text_rect4 = text_surface4.get_rect(topleft=(0, 90))
         screen.blit(text_surface4, text_rect4)
 
-
 playground = Playground(PENDULUM_COUNT)
 
 while running:
@@ -197,16 +223,16 @@ while running:
         if event.type in (pygame.QUIT, pygame.KEYDOWN):
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            dot_surface.fill("black")
+            dot_surface.fill(BACKGROUND_COLOR)
             show_dots = not show_dots
-
-    screen.fill("black")
-
+    screen.fill(BACKGROUND_COLOR)
     if show_dots:
         screen.blit(dot_surface, (0,0))
+    #playground.draw_energy()
     playground.draw(screen)
-    playground.update()
-    DT = clock.tick(120) / 3000
+    for _ in range(15):
+        playground.update()
+    DT = clock.tick(2000) * TIME_SCALE / 1000
     # flip() the display to put your work on screen
     pygame.display.flip()
 
