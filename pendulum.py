@@ -24,9 +24,9 @@ SPRING_NAT_LEN = 150
 MAX_LENGTH_VEL = 75000
 MAX_ANGLE_VEL = 75000
 DT = 0
-TIME_SCALE = 0.05
-PENDULUM_COUNT = 3
-TOP_PIVOT_DEPTH = 30
+TIME_SCALE = 0.02
+PENDULUM_COUNT = 1
+TOP_PIVOT_DEPTH = HEIGHT/2
 
 #Surface for drawing pendulum path
 dot_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -58,7 +58,7 @@ old_color = color
 class Pendulum:
     def __init__(self):
         self.pivot = [WIDTH/2, TOP_PIVOT_DEPTH]
-        self.config = [.5*SPRING_NAT_LEN + 1.5*SPRING_NAT_LEN*random.random(), -np.pi/2 + np.pi*random.random()] #Length, angle
+        self.config = [.1*SPRING_NAT_LEN + 2.9*SPRING_NAT_LEN*random.random(), -np.pi + 2*np.pi*random.random()] #Length, angle
         self.velocity = [0.0, 0.0] #Length, angle (all pendulums start at rest)
         self.color_counter = 0
     
@@ -228,9 +228,9 @@ while running:
     screen.fill(BACKGROUND_COLOR)
     if show_dots:
         screen.blit(dot_surface, (0,0))
-    #playground.draw_energy()
+    playground.draw_energy()
     playground.draw(screen)
-    for _ in range(15):
+    for _ in range(25):
         playground.update()
     DT = clock.tick(2000) * TIME_SCALE / 1000
     # flip() the display to put your work on screen
